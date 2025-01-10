@@ -43,9 +43,14 @@ def fit(model, X_train, y_train=None):
 
 
 def calculate_loss(X, X_pred):
-    """Calculate loss used with threshold to detect anomaly."""
-    mae_loss = np.mean(np.abs(X_pred - X), axis=1)
-    return mae_loss
+    min_vals = np.min(X, axis=1, keepdims=True)
+    max_vals = np.max(X, axis=1, keepdims=True)
+    X_norm = (X - min_vals) / (max_vals - min_vals + 1e-6)
+    X_pred_norm = (X_pred - min_vals) / (max_vals - min_vals + 1e-6) 
+    deviation = np.abs(X_pred_norm - X_norm) / (X_norm + 1e-6) # Now all values are between 0 and 1 
+    loss = np.mean(deviation, axis=1)                           # And loss is calculated as the mean of the deviation
+    return loss                                                # from previous itteration we avg over all features to get a single value for loss
+                                                
 
 
 def detect(model, X, threshold=0.65):
@@ -56,7 +61,7 @@ def detect(model, X, threshold=0.65):
                                                                       
 
 class AutoEncoderLSTM(Detector):
-    def __init__(self, time_steps=3, threshold=0.65, size=128, dropout_fraction=0.2):
+    def __init__(self, time_steps=3, threshold=0.65, size=128, dropout_fraction=0.2, rain_data = None):
         # A 'second channel' could be added to support rain features or similar. maby allow the input to have more than one feature
         super().__init__()
         self._model = None
@@ -65,6 +70,7 @@ class AutoEncoderLSTM(Detector):
         self._dropout_fraction = dropout_fraction
         self._size = size
         self._time_steps = time_steps
+        self.rain_data = rain_data # Added this for potential future use
 
     def _fit(self, data):
         X, y = self._create_features(data)
@@ -72,7 +78,9 @@ class AutoEncoderLSTM(Detector):
         self._history = fit(self._model, X, y)
         return self
 
-    def _detect(self, data):
+    def _detect(self, data, threshold=None):
+        if threshold is not None: # added this here so we can play around with the threshold without having to retrain
+            self._threshold = threshold 
         X, _ = self._create_features(data)
         is_anomaly = detect(self._model, X, self._threshold)
         return is_anomaly
@@ -80,6 +88,8 @@ class AutoEncoderLSTM(Detector):
     def _create_features(self, data):
         df = data.to_frame("timeseries")
         X, y = df[["timeseries"]], df.timeseries
+        if self.rain_data is not None: # workaround for now, this should be done in a more general way, maby pass a list of features and a df
+            X["rain"] = self.rain_data # This aligns granted the index is the same
         X, y = create_dataset(X, y, time_steps=self._time_steps)
         return X, y
 
