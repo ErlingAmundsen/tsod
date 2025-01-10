@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout, RepeatVector, TimeDistributed
+from tensorflow.keras.layers import Dense, LSTM, Dropout, RepeatVector, TimeDistributed # Considering moving to torch as Pyod was written in, to avoid two separate dependencies
 
 from tsod.detectors import Detector
 from tsod.features import create_dataset
@@ -50,12 +50,14 @@ def calculate_loss(X, X_pred):
 
 def detect(model, X, threshold=0.65):
     X_pred = model.predict(X)
-    is_anomaly = calculate_loss(X, X_pred) > threshold
-    return is_anomaly
-
+    is_anomaly = calculate_loss(X, X_pred) > threshold  # I feel this should be scaled to the data
+    return is_anomaly                                   # Perhaps a scaler should be added to the model or a shift in the detect method
+                                                        # just so that the threshold can represent a percentage of the data that is scaled to a reasonable range
+                                                                      
 
 class AutoEncoderLSTM(Detector):
     def __init__(self, time_steps=3, threshold=0.65, size=128, dropout_fraction=0.2):
+        # A 'second channel' could be added to support rain features or similar. maby allow the input to have more than one feature
         super().__init__()
         self._model = None
         self._history = None
