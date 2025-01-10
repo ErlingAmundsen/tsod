@@ -10,7 +10,7 @@ from tsod.features import create_dataset
 def build_model(X_train, dropout_fraction=0.2, size=128):
     timesteps = X_train.shape[1]
     num_features = X_train.shape[2]
-
+    print(timesteps, num_features)
     model = Sequential(
         [
             LSTM(size, input_shape=(timesteps, num_features)),
@@ -30,6 +30,7 @@ def fit(model, X_train, y_train=None):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="val_loss", patience=3, mode="min"
     )
+    print(X_train.shape, y_train.shape)
     history = model.fit(
         X_train,
         y_train,
@@ -61,7 +62,7 @@ def detect(model, X, threshold=0.65):
                                                                       
 
 class AutoEncoderLSTM(Detector):
-    def __init__(self, time_steps=3, threshold=0.65, size=128, dropout_fraction=0.2, rain_data = None):
+    def __init__(self, time_steps=3, threshold=0.65, size=128, dropout_fraction=0.2):
         # A 'second channel' could be added to support rain features or similar. maby allow the input to have more than one feature
         super().__init__()
         self._model = None
@@ -70,7 +71,6 @@ class AutoEncoderLSTM(Detector):
         self._dropout_fraction = dropout_fraction
         self._size = size
         self._time_steps = time_steps
-        self.rain_data = rain_data # Added this for potential future use
 
     def _fit(self, data):
         X, y = self._create_features(data)
@@ -88,9 +88,8 @@ class AutoEncoderLSTM(Detector):
     def _create_features(self, data):
         df = data.to_frame("timeseries")
         X, y = df[["timeseries"]], df.timeseries
-        if self.rain_data is not None: # workaround for now, this should be done in a more general way, maby pass a list of features and a df
-            X["rain"] = self.rain_data # This aligns granted the index is the same
-        X, y = create_dataset(X, y, time_steps=self._time_steps)
+
+        X, y = create_dataset(X, y, time_steps=self._time_steps) 
         return X, y
 
     def __str__(self):
