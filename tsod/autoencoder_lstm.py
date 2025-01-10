@@ -51,14 +51,15 @@ def calculate_loss(X, X_pred):
     deviation = np.abs(X_pred_norm - X_norm) / (X_norm + 1e-6) # Now all values are between 0 and 1 
     loss = np.mean(deviation, axis=1)                           # And loss is calculated as the mean of the deviation
     return loss                                                # from previous itteration we avg over all features to get a single value for loss
+                                                                # Maby focusing on only one time step would be better, as we are looking for anomalies in the data
+                                                                
                                                 
 
 
 def detect(model, X, threshold=0.65):
     X_pred = model.predict(X)
     is_anomaly = calculate_loss(X, X_pred) > threshold  # I feel this should be scaled to the data
-    return is_anomaly                                   # Perhaps a scaler should be added to the model or a shift in the detect method
-                                                        # just so that the threshold can represent a percentage of the data that is scaled to a reasonable range
+    return is_anomaly                                   
                                                                       
 
 class AutoEncoderLSTM(Detector):
@@ -88,8 +89,7 @@ class AutoEncoderLSTM(Detector):
     def _create_features(self, data):
         df = data.to_frame("timeseries")
         X, y = df[["timeseries"]], df.timeseries
-
-        X, y = create_dataset(X, y, time_steps=self._time_steps) 
+        X, y = create_dataset(X, y, time_steps=self._time_steps)
         return X, y
 
     def __str__(self):
